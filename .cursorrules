@@ -8,9 +8,9 @@
       "backend": "Cloudflare Workers",
       "communication": "WebSocket + REST APIs",
       "ai": {
-        "vision": "GPT-4 Vision",
+        "vision": "gpt-4o-realtime-preview-2024-12-17",
         "voice": "Whisper API",
-        "chat": "gpt-4o"
+        "chat": "gpt-4-turbo"
       }
     },
     "meta": {

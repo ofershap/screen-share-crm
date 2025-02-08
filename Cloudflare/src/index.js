@@ -1,24 +1,28 @@
 export default {
 	async fetch(request, env) {
-		console.log(`[Request] ${request.method} ${request.url}`);
+		try {
+			console.log(`[Request] ${request.method} ${request.url}`);
 
-		if (request.headers.get('Upgrade') === 'websocket') {
-			console.log('[WebSocket] New connection request');
-			return handleWebSocket(request, env);
-		}
+			if (request.headers.get('Upgrade') === 'websocket') {
+				console.log('[WebSocket] New connection request');
+				return handleWebSocket(request, env);
+			}
 
-		const { searchParams } = new URL(request.url);
-		const action = searchParams.get('action');
-		console.log(`[HTTP] Action requested: ${action}`);
+			const { searchParams } = new URL(request.url);
+			const action = searchParams.get('action');
+			console.log(`[HTTP] Action requested: ${action}`);
 
-		switch (action) {
-			case 'chat':
-				return handleChatRequest(request, env);
-			case 'transcribe':
-				return handleTranscription(request, env);
-			default:
-				console.error(`[Error] Invalid action: ${action}`);
-				return new Response('Invalid Request', { status: 400 });
+			switch (action) {
+				case 'chat':
+					return handleChatRequest(request, env);
+				case 'transcribe':
+					return handleTranscription(request, env);
+				default:
+					return new Response('OK'); // Return a default response for health checks
+			}
+		} catch (error) {
+			console.error('[Error]', error);
+			return new Response('Internal Server Error', { status: 500 });
 		}
 	},
 };
@@ -28,142 +32,184 @@ const conversationContexts = new Map();
 
 // 🟢 WebSocket Handler for real-time conversation and screen sharing
 async function handleWebSocket(request, env) {
-	const [client, server] = Object.values(new WebSocketPair());
-	server.accept();
-	console.log('[WebSocket] Connection accepted');
+	try {
+		const pair = new WebSocketPair();
+		const [client, server] = Object.values(pair);
 
-	// Initialize conversation context
-	const connectionId = crypto.randomUUID();
-	conversationContexts.set(connectionId, {
-		messageHistory: [],
-		lastScreenDescription: null,
-		lastTranscription: null,
-		lastPing: Date.now(),
-	});
+		// Accept the WebSocket connection
+		server.accept();
+		console.log('[WebSocket] Connection accepted');
 
-	// Set up ping interval
-	const pingInterval = setInterval(() => {
-		try {
-			if (server.readyState === WebSocket.OPEN) {
-				const context = conversationContexts.get(connectionId);
-				if (context && Date.now() - context.lastPing > 45000) {
-					// No ping received for 45 seconds, close connection
-					console.log('[WebSocket] No ping received, closing connection');
-					server.close(1000, 'Ping timeout');
+		// Initialize conversation context
+		const connectionId = crypto.randomUUID();
+		conversationContexts.set(connectionId, {
+			messageHistory: [],
+			lastScreenDescription: null,
+			lastTranscription: null,
+			lastPing: Date.now(),
+		});
+
+		// Set up ping interval
+		const pingInterval = setInterval(() => {
+			try {
+				if (server.readyState === 1) {
+					// WebSocket.OPEN
+					const context = conversationContexts.get(connectionId);
+					if (context && Date.now() - context.lastPing > 45000) {
+						console.log('[WebSocket] No ping received, closing connection');
+						server.close(1000, 'Ping timeout');
+						clearInterval(pingInterval);
+						conversationContexts.delete(connectionId);
+					}
+				} else {
 					clearInterval(pingInterval);
 					conversationContexts.delete(connectionId);
-					return;
 				}
-			} else {
+			} catch (error) {
+				console.error('[WebSocket] Error in ping interval:', error);
 				clearInterval(pingInterval);
-				conversationContexts.delete(connectionId);
 			}
-		} catch (error) {
-			console.error('[WebSocket] Error in ping interval:', error);
-			clearInterval(pingInterval);
-		}
-	}, 30000);
+		}, 30000);
 
-	server.addEventListener('message', async (event) => {
-		try {
-			const data = JSON.parse(event.data);
-			const { type, payload, messageId } = data;
-			console.log(`[WebSocket] Received message type: ${type}`);
+		// Handle incoming messages
+		server.addEventListener('message', async (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				const { type, payload, messageId } = data;
+				console.log(`[WebSocket] Received message type: ${type}`);
 
-			const context = conversationContexts.get(connectionId);
-			if (!context) {
-				console.error('[WebSocket] No context found for connection');
-				server.close(1000, 'No context found');
-				return;
-			}
-
-			// Handle ping messages
-			if (type === 'ping') {
-				context.lastPing = Date.now();
-				server.send(
-					JSON.stringify({
-						type: 'ack',
-						payload: {
-							content: 'pong',
-							timestamp: Date.now(),
-						},
-						messageId,
-					})
-				);
-				return;
-			}
-
-			// Send acknowledgment for non-ping messages
-			server.send(
-				JSON.stringify({
-					type: 'ack',
-					payload: {
-						content: 'Message received',
-						timestamp: Date.now(),
-					},
-					messageId,
-				})
-			);
-
-			switch (type) {
-				case 'screen_data':
-					await handleScreenData(payload, context, server, env);
-					break;
-				case 'voice_data':
-					await handleVoiceData(payload, context, server, env);
-					break;
-				case 'chat':
-					await handleChatMessage(payload.message, context, server, env);
-					break;
-				default:
-					console.warn(`[WebSocket] Unknown message type: ${type}`);
+				const context = conversationContexts.get(connectionId);
+				if (!context) {
+					console.error('[WebSocket] No context found for connection');
 					server.send(
 						JSON.stringify({
 							type: 'error',
 							payload: {
-								content: 'Unknown message type',
+								content: 'Session expired. Please refresh the page.',
+								timestamp: Date.now(),
+							},
+							messageId: 'error',
+						})
+					);
+					return;
+				}
+
+				// Update last ping time
+				context.lastPing = Date.now();
+
+				// Handle ping messages
+				if (type === 'ping') {
+					server.send(
+						JSON.stringify({
+							type: 'ack',
+							payload: {
+								content: 'pong',
 								timestamp: Date.now(),
 							},
 							messageId,
 						})
 					);
+					return;
+				}
+
+				// Send acknowledgment for non-ping messages
+				server.send(
+					JSON.stringify({
+						type: 'ack',
+						payload: {
+							content: 'Message received',
+							timestamp: Date.now(),
+						},
+						messageId,
+					})
+				);
+
+				// Process message based on type
+				switch (type) {
+					case 'screen_data':
+						await handleScreenData(payload, context, server, env);
+						break;
+					case 'voice_data':
+						await handleVoiceData(payload, context, server, env);
+						break;
+					case 'chat':
+						await handleChatMessage(payload.message, context, server, env);
+						break;
+					default:
+						server.send(
+							JSON.stringify({
+								type: 'error',
+								payload: {
+									content: `Unknown message type: ${type}`,
+									timestamp: Date.now(),
+								},
+								messageId,
+							})
+						);
+				}
+			} catch (error) {
+				console.error('[WebSocket] Error processing message:', error);
+				server.send(
+					JSON.stringify({
+						type: 'error',
+						payload: {
+							content: 'Failed to process message: ' + error.message,
+							timestamp: Date.now(),
+						},
+						messageId: 'error',
+					})
+				);
 			}
-		} catch (error) {
-			console.error('[WebSocket] Error processing message:', error);
-			server.send(
-				JSON.stringify({
-					type: 'error',
-					payload: {
-						content: 'Failed to process message: ' + error.message,
-						timestamp: Date.now(),
-					},
-					messageId: 'error',
-				})
-			);
-		}
-	});
+		});
 
-	server.addEventListener('error', (error) => {
-		console.error('[WebSocket] Connection error:', error);
-		clearInterval(pingInterval);
-		conversationContexts.delete(connectionId);
-	});
+		// Handle WebSocket closure
+		server.addEventListener('close', () => {
+			console.log('[WebSocket] Connection closed');
+			clearInterval(pingInterval);
+			conversationContexts.delete(connectionId);
+		});
 
-	server.addEventListener('close', () => {
-		console.log('[WebSocket] Connection closed');
-		clearInterval(pingInterval);
-		conversationContexts.delete(connectionId);
-	});
+		// Handle WebSocket errors
+		server.addEventListener('error', (error) => {
+			console.error('[WebSocket] Connection error:', error);
+			clearInterval(pingInterval);
+			conversationContexts.delete(connectionId);
+		});
 
-	return new Response(null, { status: 101, webSocket: client });
+		// Return the client WebSocket
+		return new Response(null, {
+			status: 101,
+			webSocket: client,
+		});
+	} catch (error) {
+		console.error('[WebSocket] Setup error:', error);
+		return new Response('WebSocket setup failed', { status: 500 });
+	}
 }
 
 async function handleScreenData(payload, context, server, env) {
 	try {
 		console.log('[Screen Share] Processing screen data');
-		const imageData = payload.data;
 
-		// Analyze screen content with GPT-4 Vision
+		if (!env.OPENAI_API_KEY) {
+			console.error('[OpenAI] API key not configured');
+			throw new Error('OpenAI API key not configured. Please set the OPENAI_API_KEY secret.');
+		}
+
+		const imageData = payload.data;
+		if (!imageData) {
+			console.error('[Screen Share] No image data received');
+			throw new Error('No image data received');
+		}
+
+		console.log('[Screen Share] Sending request to OpenAI');
+
+		// Log first few characters of API key (safely)
+		const apiKeyPreview = env.OPENAI_API_KEY
+			? `${env.OPENAI_API_KEY.substring(0, 4)}...${env.OPENAI_API_KEY.substring(env.OPENAI_API_KEY.length - 4)}`
+			: 'not set';
+		console.log('[OpenAI] Using API key:', apiKeyPreview);
+
 		const response = await fetch('https://api.openai.com/v1/chat/completions', {
 			method: 'POST',
 			headers: {
@@ -171,7 +217,7 @@ async function handleScreenData(payload, context, server, env) {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				model: 'gpt-4-vision-preview',
+				model: 'gpt-4o-realtime-preview-2024-12-17',
 				messages: [
 					{
 						role: 'user',
@@ -194,10 +240,15 @@ async function handleScreenData(payload, context, server, env) {
 		});
 
 		if (!response.ok) {
-			throw new Error(`GPT Vision API error: ${response.status}`);
+			const errorData = await response.text();
+			console.error('[OpenAI] Error response status:', response.status);
+			console.error('[OpenAI] Error response headers:', Object.fromEntries(response.headers.entries()));
+			console.error('[OpenAI] Error response body:', errorData);
+			throw new Error(`GPT API error: ${response.status} - ${errorData}`);
 		}
 
 		const result = await response.json();
+		console.log('[OpenAI] Response received successfully');
 		const screenDescription = result.choices[0].message.content;
 		context.lastScreenDescription = screenDescription;
 
@@ -214,6 +265,7 @@ async function handleScreenData(payload, context, server, env) {
 		);
 	} catch (error) {
 		console.error('[Screen Share] Error processing screen data:', error);
+		console.error('[Screen Share] Error stack:', error.stack);
 		server.send(
 			JSON.stringify({
 				type: 'error',
@@ -232,28 +284,45 @@ async function handleVoiceData(payload, context, server, env) {
 		console.log('[Voice] Processing voice data');
 		const audioData = payload.data;
 
-		// Convert base64 to blob
-		const audioBlob = await fetch(`data:audio/webm;base64,${audioData}`).then((r) => r.blob());
+		if (!env.OPENAI_API_KEY) {
+			console.error('[OpenAI] API key not configured');
+			throw new Error('OpenAI API key not configured. Please set the OPENAI_API_KEY secret.');
+		}
+
+		// Get the MIME type from the base64 data
+		const mimeType = audioData.split(';')[0].split(':')[1];
+		console.log('[Voice] Audio MIME type:', mimeType);
+
+		// Convert base64 to blob with correct MIME type
+		const audioBlob = await fetch(`data:${mimeType};base64,${audioData}`).then((r) => r.blob());
 
 		// Create form data for Whisper API
 		const formData = new FormData();
-		formData.append('file', audioBlob, 'audio.webm');
+		formData.append('file', audioBlob, `audio.${mimeType.split('/')[1].split(';')[0]}`);
 		formData.append('model', 'whisper-1');
+		formData.append('response_format', 'json');
+		formData.append('language', 'en');
 
-		// Send to Whisper API
+		console.log('[Voice] Sending request to Whisper API');
 		const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
 			method: 'POST',
 			headers: {
 				Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+				// Don't set Content-Type header, let the browser set it with the boundary
 			},
 			body: formData,
 		});
 
 		if (!transcriptionResponse.ok) {
-			throw new Error(`Whisper API error: ${transcriptionResponse.status}`);
+			const errorData = await transcriptionResponse.text();
+			console.error('[Whisper] Error response status:', transcriptionResponse.status);
+			console.error('[Whisper] Error response headers:', Object.fromEntries(transcriptionResponse.headers.entries()));
+			console.error('[Whisper] Error response body:', errorData);
+			throw new Error(`Whisper API error: ${transcriptionResponse.status} - ${errorData}`);
 		}
 
 		const result = await transcriptionResponse.json();
+		console.log('[Whisper] Transcription received:', result.text);
 		context.lastTranscription = result.text;
 
 		// Send transcription back to client
@@ -272,6 +341,7 @@ async function handleVoiceData(payload, context, server, env) {
 		await handleChatMessage(result.text, context, server, env);
 	} catch (error) {
 		console.error('[Voice] Error processing voice data:', error);
+		console.error('[Voice] Error stack:', error.stack);
 		server.send(
 			JSON.stringify({
 				type: 'error',
