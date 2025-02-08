@@ -47,7 +47,7 @@ A real-time screen sharing and voice chat application with GPT-4 Vision integrat
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/screen-share-gpt.git
+git clone https://github.com/ofershap/screen-share-gpt.git
 cd screen-share-gpt
 
 # Install frontend dependencies
@@ -65,9 +65,14 @@ npm run dev
 cd Cloudflare
 npm install
 
-# Configure environment
-cp wrangler.example.json wrangler.json
-# Edit wrangler.json with your settings
+# Configure Cloudflare Worker
+# Create wrangler.json with the following content:
+{
+  "name": "screen-share-gpt",
+  "main": "src/index.js",
+  "compatibility_date": "2024-02-08",
+  "compatibility_flags": ["nodejs_compat"]
+}
 
 # Start development worker
 npm run dev
@@ -75,7 +80,7 @@ npm run dev
 
 ### Environment Variables
 
-Create a `.dev.vars` file in the Cloudflare directory:
+Create the var in your Cloudflare directory:
 
 ```env
 OPENAI_API_KEY=your_api_key_here
@@ -162,10 +167,12 @@ interface ServerMessage {
 
 ```bash
 # Watch worker logs
-wrangler tail your-worker-name --format pretty
+wrangler tail screen-share-gpt --format pretty
+# or
+npm start # will deploy and start the log tailing
 
 # Frontend development logs
-npm run dev -- --debug
+npm run dev
 ```
 
 ### Log Categories
@@ -186,6 +193,7 @@ npm run dev -- --debug
 
 ## 🗺️ Roadmap
 
+- [ ] Make it work, fix worker code
 - [ ] User authentication and session management
 - [ ] Rate limiting and usage quotas
 - [ ] Screen recording history
@@ -209,9 +217,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 💬 Support
 
 - Create an issue for bug reports
-- Join our [Discord community](your-discord-link)
-- Check out the [Wiki](your-wiki-link) for guides
-- Email: your.email@example.com
+- Star the repository if you find it useful
+- Fork and contribute to help improve the project
 
 ---
 
