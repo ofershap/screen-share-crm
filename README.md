@@ -6,6 +6,8 @@ A real-time screen sharing and voice chat application with GPT-4 Vision integrat
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4%20Vision-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Cloudflare%20Workers-orange.svg)
 
+![Alt text](.github/website.png)
+
 ## 🌟 Features
 
 - 🖥️ Real-time screen sharing with GPT-4 Vision analysis
