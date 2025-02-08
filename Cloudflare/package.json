@@ -5,7 +5,7 @@
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-		"start": "wrangler deploy && wrangler log",
+		"start": "wrangler deploy && wrangler tail",
 		"log": "wrangler tail",
 		"test": "vitest"
 	},

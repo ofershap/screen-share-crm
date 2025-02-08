@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "project": {
+    "name": "Screen Share GPT",
+    "description": "A real-time screen sharing and voice chat application with GPT-4 Vision integration",
+    "architecture": {
+      "frontend": "React + TypeScript + Tailwind CSS",
+      "backend": "Cloudflare Workers",
+      "communication": "WebSocket + REST APIs",
+      "ai": {
+        "vision": "GPT-4 Vision",
+        "voice": "Whisper API",
+        "chat": "gpt-4o"
+      }
+    },
+    "meta": {
+      "selfImprovement": "This rules file should be updated with any new findings, patterns, or best practices discovered during development to improve AI assistance over time",
+      "configuration": {
+        "wrangler": "Using wrangler.json for Cloudflare Worker configuration instead of wrangler.toml",
+        "deployment": "Deployment handled through Cloudflare Workers platform"
+      }
+    }
+  },
+  "rules": [
+    {
+      "pattern": "Web/node_modules/**",
+      "exclude": true,
+      "description": "Exclude dependency files"
+    },
+    {
+      "pattern": "Cloudflare/node_modules/**",
+      "exclude": true,
+      "description": "Exclude worker dependency files"
+    },
+    {
+      "pattern": "Web/dist/**",
+      "exclude": true,
+      "description": "Exclude build output"
+    },
+    {
+      "pattern": "**/.git/**",
+      "exclude": true,
+      "description": "Exclude git files"
+    },
+    {
+      "pattern": "**/*.log",
+      "exclude": true,
+      "description": "Exclude log files"
+    },
+    {
+      "pattern": "Web/src/**/*.ts",
+      "group": "Frontend TypeScript",
+      "description": "Core TypeScript logic files"
+    },
+    {
+      "pattern": "Web/src/**/*.tsx",
+      "group": "Frontend React",
+      "description": "React component files"
+    },
+    {
+      "pattern": "Web/src/components/**",
+      "group": "Frontend Components",
+      "description": "Reusable UI components"
+    },
+    {
+      "pattern": "Web/src/hooks/**",
+      "group": "Frontend Hooks",
+      "description": "Custom React hooks for media and WebSocket"
+    },
+    {
+      "pattern": "Cloudflare/src/**/*.js",
+      "group": "Backend Worker",
+      "description": "Cloudflare Worker implementation"
+    },
+    {
+      "pattern": "Cloudflare/test/**",
+      "group": "Backend Tests",
+      "description": "Worker test files"
+    },
+    {
+      "pattern": "**/package.json",
+      "group": "Dependencies",
+      "description": "Project dependencies"
+    },
+    {
+      "pattern": "**/tsconfig*.json",
+      "group": "TypeScript Config",
+      "description": "TypeScript configuration"
+    },
+    {
+      "pattern": "**/*.config.js",
+      "group": "Config Files",
+      "description": "Project configuration files"
+    },
+    {
+      "pattern": "**/*.toml",
+      "exclude": true,
+      "description": "Exclude any toml files as we use wrangler.json"
+    },
+    {
+      "pattern": "**/wrangler.json",
+      "group": "Config Files",
+      "description": "Cloudflare Worker configuration using wrangler.json"
+    },
+    {
+      "pattern": "**/.env*",
+      "exclude": true,
+      "description": "Exclude environment files"
+    },
+    {
+      "pattern": "Web/.bolt/**",
+      "exclude": true,
+      "description": "Exclude build cache"
+    },
+    {
+      "pattern": "Cloudflare/.wrangler/**",
+      "exclude": true,
+      "description": "Exclude Wrangler cache"
+    },
+    {
+      "pattern": "round-river-16b3/**",
+      "exclude": true,
+      "description": "Exclude deployment files"
+    },
+    {
+      "pattern": "Web/.git/**",
+      "exclude": true,
+      "description": "Exclude nested git directory as we only use root git"
+    },
+    {
+      "pattern": ".git/**",
+      "group": "Version Control",
+      "description": "Root git directory for version control"
+    }
+  ],
+  "groups": [
+    {
+      "name": "Frontend React",
+      "description": "React components and UI logic",
+      "conventions": [
+        "Use functional components with hooks",
+        "Follow atomic design principles",
+        "Implement proper error boundaries",
+        "Use TypeScript for type safety"
+      ]
+    },
+    {
+      "name": "Frontend TypeScript",
+      "description": "TypeScript source files",
+      "conventions": [
+        "Strict type checking enabled",
+        "Use interfaces over types when possible",
+        "Proper error handling with custom types"
+      ]
+    },
+    {
+      "name": "Frontend Components",
+      "description": "Reusable React components",
+      "conventions": [
+        "Component-specific types in same file",
+        "Use CSS modules or Tailwind",
+        "Implement proper prop validation"
+      ]
+    },
+    {
+      "name": "Frontend Hooks",
+      "description": "Custom React hooks",
+      "conventions": [
+        "Prefix with 'use'",
+        "Handle cleanup in useEffect",
+        "Proper TypeScript generics"
+      ]
+    },
+    {
+      "name": "Backend Worker",
+      "description": "Cloudflare Worker source files",
+      "conventions": [
+        "Handle CORS properly",
+        "Implement proper error responses",
+        "Use environment variables for config",
+        "Use gpt-4o model for chat interactions",
+        "Implement proper rate limiting for AI endpoints",
+        "Handle AI token limits and streaming responses",
+        "Maintain conversation context efficiently"
+      ]
+    },
+    {
+      "name": "Backend Tests",
+      "description": "Worker test files",
+      "conventions": [
+        "Test each endpoint",
+        "Mock external services",
+        "Test error cases"
+      ]
+    },
+    {
+      "name": "Dependencies",
+      "description": "Package dependencies and lock files",
+      "conventions": [
+        "Keep dependencies updated",
+        "Use exact versions",
+        "Document major updates"
+      ]
+    },
+    {
+      "name": "Config Files",
+      "description": "Configuration files for various tools",
+      "conventions": [
+        "Document non-standard config",
+        "Use comments for clarity",
+        "Keep consistent across environments"
+      ]
+    },
+    {
+      "name": "TypeScript Config",
+      "description": "TypeScript configuration files",
+      "conventions": [
+        "Strict mode enabled",
+        "Consistent module resolution",
+        "Path aliases documented"
+      ]
+    },
+    {
+      "name": "Version Control",
+      "description": "Git version control files",
+      "conventions": [
+        "Use only root-level git repository",
+        "Remove any nested .git directories",
+        "Follow conventional commits",
+        "Keep clean git history"
+      ]
+    }
+  ],
+  "bestPractices": [
+    "Use TypeScript for all new code",
+    "Follow React hooks best practices",
+    "Implement proper error handling",
+    "Use proper WebSocket connection management",
+    "Handle screen sharing and voice permissions properly",
+    "Implement proper cleanup for media streams",
+    "Use proper types for API responses",
+    "Follow REST API best practices in Workers",
+    "Implement proper security measures"
+  ]
+}
