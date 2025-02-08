@@ -9,8 +9,8 @@
       "communication": "WebSocket + REST APIs",
       "ai": {
         "vision": "gpt-4o-realtime-preview-2024-12-17",
-        "voice": "Whisper API",
-        "chat": "gpt-4-turbo"
+        "voice": "whisper-1",
+        "chat": "gpt-4o-mini-realtime-preview"
       }
     },
     "meta": {
@@ -178,7 +178,6 @@
         "Handle CORS properly",
         "Implement proper error responses",
         "Use environment variables for config",
-        "Use gpt-4o model for chat interactions",
         "Implement proper rate limiting for AI endpoints",
         "Handle AI token limits and streaming responses",
         "Maintain conversation context efficiently"
